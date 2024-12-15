@@ -9,12 +9,20 @@ To run this example:
 
 import asyncio
 import json
-from srpc_client import SrpcClient
+import os
+from srpc_client import SrpcClientConfig
+
 
 async def main():
-    client = SrpcClient("<Hostname or IP of hypervisor>", 6976, "/_SRPC_/TLS/JSON", "<Path to Keymaster Certificate file>", "<Path to Keymaster Key file>")
-    
-    await client.connect()
+    client = SrpcClientConfig(
+        os.environ["EXAMPLE_1_SRPC_SERVER_HOST"],
+        int(os.environ["EXAMPLE_1_SRPC_SERVER_PORT"]),
+        os.environ["EXAMPLE_1_SRPC_SERVER_ENPOINT"],
+        os.environ["EXAMPLE_1_SRPC_SERVER_CERT"],
+        os.environ["EXAMPLE_1_SRPC_SERVER_KEY"],
+    )
+
+    client = await client.connect()
     print("Connected to server")
 
     message = "Hypervisor.StartVm\n"
@@ -25,9 +33,7 @@ async def main():
     for response in responses:
         print(f"Received response: {response}")
 
-    json_payload = {
-        "IpAddress": "<IP Address of VM>"
-    }
+    json_payload = {"IpAddress": "<IP Address of VM>"}
     json_string = json.dumps(json_payload)
     await client.send_json(json_string)
     print(f"Sent JSON payload: {json_payload}")
@@ -35,6 +41,7 @@ async def main():
     json_responses = await client.receive_json()
     for json_response in json_responses:
         print(f"Received JSON response: {json.loads(json_response)}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

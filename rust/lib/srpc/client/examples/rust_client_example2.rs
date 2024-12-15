@@ -1,4 +1,3 @@
-use serde_json::json;
 use srpc_client::{ClientConfig, ReceiveOptions};
 use tracing::{error, info, level_filters::LevelFilter};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -16,23 +15,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Starting client...");
 
-    // Create a new Client instance
-    let client = ClientConfig::new(
-        &std::env::var("EXAMPLE_1_SRPC_SERVER_HOST")?,
-        std::env::var("EXAMPLE_1_SRPC_SERVER_PORT")?.parse()?,
-        &std::env::var("EXAMPLE_1_SRPC_SERVER_ENPOINT")?,
-        &std::env::var("EXAMPLE_1_SRPC_SERVER_CERT")?,
-        &std::env::var("EXAMPLE_1_SRPC_SERVER_KEY")?,
+    // Create a new ClientConfig instance
+    let config = ClientConfig::new(
+        &std::env::var("EXAMPLE_2_SRPC_SERVER_HOST")?,
+        std::env::var("EXAMPLE_2_SRPC_SERVER_PORT")?.parse()?,
+        &std::env::var("EXAMPLE_2_SRPC_SERVER_ENPOINT")?,
+        &std::env::var("EXAMPLE_2_SRPC_SERVER_CERT")?,
+        &std::env::var("EXAMPLE_2_SRPC_SERVER_KEY")?,
     );
 
     // Connect to the server
-    let client = client.connect().await?;
+    let client = config.connect().await?;
     info!("Connected to server");
 
     // Send a message
-    let message = "Hypervisor.ProbeVmPort\n";
+    let message = "Hypervisor.GetUpdates\n";
     info!("Sending message: {:?}", message);
     client.send_message(message).await?;
+    info!("Sent message: {:?}", message);
 
     // Receive an empty response
     info!("Waiting for empty string response...");
@@ -46,24 +46,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Prepare and send JSON payload
-    let json_payload = json!({
-        "IpAddress": "<IP Address of VM>",
-        "PortNumber": 22
-    });
-
-    info!("Sending JSON payload: {:?}", json_payload);
-    client.send_json(&json_payload).await?;
-
-    // Receive and parse JSON response
-    info!("Waiting for JSON response...");
+    // Receive responses
     let mut rx = client
         .receive_json(|_| false, &ReceiveOptions::default())
         .await?;
     while let Some(result) = rx.recv().await {
         match result {
-            Ok(json_response) => info!("Received JSON response: {:?}", json_response),
-            Err(e) => error!("Error receiving JSON: {:?}", e),
+            Ok(response) => info!("Received response: {:?}", response),
+            Err(e) => error!("Error receiving message: {:?}", e),
         }
     }
 
