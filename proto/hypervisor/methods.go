@@ -410,6 +410,9 @@ func (left *VmInfo) Equal(right *VmInfo) bool {
 	if left.DestroyProtection != right.DestroyProtection {
 		return false
 	}
+	if left.DisableFillZero != right.DisableFillZero {
+		return false
+	}
 	if left.DisableVirtIO != right.DisableVirtIO {
 		return false
 	}

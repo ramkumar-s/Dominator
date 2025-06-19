@@ -32,6 +32,8 @@ var (
 		"If true, do not destroy running VM")
 	disableVirtIO = flag.Bool("disableVirtIO", false,
 		"If true, disable virtio drivers, reducing I/O performance")
+	disableFillZero = flag.Bool("disableFillZero", false,
+		"If true, skip writing zeroes to file if fallocate is not available when creating VM")
 	dhcpTimeout = flag.Duration("dhcpTimeout", time.Minute,
 		"Time to wait before timing out on DHCP request from VM")
 	doNotStart = flag.Bool("doNotStart", false,

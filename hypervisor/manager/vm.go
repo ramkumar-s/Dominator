@@ -101,7 +101,7 @@ func computeSize(minimumFreeBytes, roundupPower, size uint64) uint64 {
 // copyData will create and truncate the specified file and will copy data to
 // the file. If reader is nil, the file is fallocated or zero-filled.
 func copyData(filename string, reader io.Reader, length uint64,
-	logger log.DebugLogger) error {
+	logger log.DebugLogger, disableFillZero bool) error {
 	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY,
 		fsutil.PrivateFilePerms)
 	if err != nil {
@@ -112,7 +112,7 @@ func copyData(filename string, reader io.Reader, length uint64,
 		return err
 	}
 	if reader == nil {
-		return fsutil.FallocateOrFill(filename, length, logger)
+		return fsutil.FallocateOrFill(filename, length, logger, disableFillZero)
 	}
 	_, err = io.CopyN(file, reader, int64(length))
 	return err
@@ -500,6 +500,7 @@ func (m *Manager) allocateVm(req proto.CreateVmRequest,
 				CpuPriority:        req.CpuPriority,
 				DestroyOnPowerdown: req.DestroyOnPowerdown,
 				DestroyProtection:  req.DestroyProtection,
+				DisableFillZero:    req.DisableFillZero,
 				DisableVirtIO:      req.DisableVirtIO,
 				ExtraKernelOptions: req.ExtraKernelOptions,
 				Hostname:           req.Hostname,
@@ -1341,6 +1342,7 @@ func (m *Manager) createVm(conn *srpc.Conn) error {
 			return err
 		}
 		writeRawOptions := util.WriteRawOptions{
+			DisableFillZero:    vm.DisableFillZero,
 			ExtraKernelOptions: request.ExtraKernelOptions,
 			InitialImageName:   imageName,
 			MinimumFreeBytes:   request.MinimumFreeBytes,
@@ -1401,7 +1403,7 @@ func (m *Manager) createVm(conn *srpc.Conn) error {
 	vm.Volumes[0].Type = rootVolumeType
 	if request.UserDataSize > 0 {
 		filename := filepath.Join(vm.dirname, UserDataFile)
-		err := copyData(filename, conn, request.UserDataSize, vm.logger)
+		err := copyData(filename, conn, request.UserDataSize, vm.logger, vm.DisableFillZero)
 		if err != nil {
 			return sendError(conn, err)
 		}
@@ -1417,7 +1419,7 @@ func (m *Manager) createVm(conn *srpc.Conn) error {
 			if request.SecondaryVolumesData {
 				dataReader = conn
 			}
-			err := copyData(fname, dataReader, volume.Size, vm.logger)
+			err := copyData(fname, dataReader, volume.Size, vm.logger, vm.DisableFillZero)
 			if err != nil {
 				return sendError(conn, err)
 			}
@@ -1571,7 +1573,7 @@ func (m *Manager) debugVmImage(conn *srpc.Conn,
 			return sendError(conn, err)
 		}
 	} else if request.ImageDataSize > 0 {
-		err := copyData(rootFilename, conn, request.ImageDataSize, vm.logger)
+		err := copyData(rootFilename, conn, request.ImageDataSize, vm.logger, vm.DisableFillZero)
 		if err != nil {
 			return sendError(conn, err)
 		}
@@ -1592,7 +1594,7 @@ func (m *Manager) debugVmImage(conn *srpc.Conn,
 				errors.New("ContentLength from: "+request.ImageURL))
 		}
 		err = copyData(rootFilename, httpResponse.Body,
-			uint64(httpResponse.ContentLength), vm.logger)
+			uint64(httpResponse.ContentLength), vm.logger, vm.DisableFillZero)
 		if err != nil {
 			return sendError(conn, err)
 		}
@@ -3219,7 +3221,7 @@ func (m *Manager) replaceVmImage(conn *srpc.Conn,
 			newSize = uint64(fi.Size())
 		}
 	} else if request.ImageDataSize > 0 {
-		err := copyData(tmpRootFilename, conn, request.ImageDataSize, vm.logger)
+		err := copyData(tmpRootFilename, conn, request.ImageDataSize, vm.logger, vm.DisableFillZero)
 		if err != nil {
 			return err
 		}
@@ -3245,7 +3247,7 @@ func (m *Manager) replaceVmImage(conn *srpc.Conn,
 				errors.New("ContentLength from: "+request.ImageURL))
 		}
 		err = copyData(tmpRootFilename, httpResponse.Body,
-			uint64(httpResponse.ContentLength), vm.logger)
+			uint64(httpResponse.ContentLength), vm.logger, vm.DisableFillZero)
 		if err != nil {
 			return sendError(conn, err)
 		}
@@ -3894,7 +3896,7 @@ func (vm *vmInfoType) copyRootVolume(request proto.CreateVmRequest,
 	if err != nil {
 		return err
 	}
-	err = copyData(vm.VolumeLocations[0].Filename, reader, dataSize, vm.logger)
+	err = copyData(vm.VolumeLocations[0].Filename, reader, dataSize, vm.logger, vm.DisableFillZero)
 	if err != nil {
 		return err
 	}

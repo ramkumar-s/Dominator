@@ -264,6 +264,7 @@ type CopyVmResponse struct { // Multiple responses are sent.
 
 type CreateVmRequest struct {
 	DhcpTimeout          time.Duration // <0: no DHCP; 0: no wait; >0 DHPC wait.
+	DisableFillZero      bool
 	DoNotStart           bool
 	EnableNetboot        bool
 	IdentityCertificate  []byte // PEM encoded.
@@ -846,6 +847,7 @@ type VmInfo struct {
 	CpuPriority         int         `json:",omitempty"`
 	DestroyOnPowerdown  bool        `json:",omitempty"`
 	DestroyProtection   bool        `json:",omitempty"`
+	DisableFillZero     bool        `json:",omitempty"`
 	DisableVirtIO       bool        `json:",omitempty"`
 	ExtraKernelOptions  string      `json:",omitempty"`
 	Hostname            string      `json:",omitempty"`
